@@ -148,19 +148,40 @@ int extract_zip(char *zipname)
 
 int main(int argc, char **argv)
 {
-	int res = 0;
+	int c, res = 0;
+	char *directory = NULL;
 
 	/* for portability check our packing is working */
 	assert(sizeof(q_emulator_hdr) == 44);
 	assert(sizeof(qdos_file_hdr) == 64);
 	assert(sizeof(zip_qdos_file_hdr) == 72);
 
-	if (argc != 2) {
-		printf("Usage: sqlux-unzip zipfile\n");
-		return 0;
+	while ((c = getopt (argc, argv, "d:")) != -1)
+	switch (c) {
+	case 'd':
+		directory = optarg;
+		break;
+	default:
+		fprintf(stderr, "Usage: sqlux-unzip [-d directory] zipfile\n");
+		return 1;
 	}
 
-	res = extract_zip(argv[1]);
+	if (optind != (argc - 1)) {
+		printf("Usage: sqlux-unzip [-d directory] zipfile\n");
+		return 1;
+	}
+
+	if (directory) {
+		mkdir(directory, 0775);
+		res = chdir(directory);
+		if (res) {
+			fprintf(stderr, "Could not change to directory %s\n",
+				directory);
+			return 1;
+		}
+	}
+
+	res = extract_zip(argv[optind]);
 
 	return res;
 }
