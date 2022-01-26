@@ -150,7 +150,7 @@ int extract_zip(char *zipname)
 int main(int argc, char **argv)
 {
 	int c, res = 0;
-	char *directory = NULL;
+	char *directory = NULL, *file = NULL;
 	wordexp_t p;
 
        int wordexp(const char *restrict s, wordexp_t *restrict p, int flags);
@@ -169,6 +169,7 @@ int main(int argc, char **argv)
 			wordfree(&p);
 		} else {
 			fprintf(stderr, "Invalid directory %s", optarg);
+			wordfree(&p);
 			return 1;
 		}
 		break;
@@ -192,7 +193,20 @@ int main(int argc, char **argv)
 		}
 	}
 
-	res = extract_zip(argv[optind]);
+	wordexp(argv[optind], &p, 0);
+	if (p.we_wordc == 1) {
+		file = strdup(p.we_wordv[0]);
+		wordfree(&p);
+	} else {
+		fprintf(stderr, "Invalid file %s\n", argv[optind]);
+		wordfree(&p);
+		return 1;
+	}
+	res = extract_zip(file);
+
+	if (file) {
+		free(file);
+	}
 
 	if (directory) {
 		free(directory);
