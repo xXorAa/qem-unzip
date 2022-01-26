@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <wordexp.h>
 #include <zip.h>
 
 #include "q-emulator.h"
@@ -150,7 +151,10 @@ int main(int argc, char **argv)
 {
 	int c, res = 0;
 	char *directory = NULL;
+	wordexp_t p;
 
+       int wordexp(const char *restrict s, wordexp_t *restrict p, int flags);
+       void wordfree(wordexp_t *p);
 	/* for portability check our packing is working */
 	assert(sizeof(q_emulator_hdr) == 44);
 	assert(sizeof(qdos_file_hdr) == 64);
@@ -159,7 +163,14 @@ int main(int argc, char **argv)
 	while ((c = getopt (argc, argv, "d:")) != -1)
 	switch (c) {
 	case 'd':
-		directory = optarg;
+		wordexp(optarg, &p, 0);
+		if (p.we_wordc == 1) {
+			directory = strdup(p.we_wordv[0]);
+			wordfree(&p);
+		} else {
+			fprintf(stderr, "Invalid directory %s", optarg);
+			return 1;
+		}
 		break;
 	default:
 		fprintf(stderr, "Usage: qem-unzip [-d directory] zipfile\n");
@@ -182,6 +193,10 @@ int main(int argc, char **argv)
 	}
 
 	res = extract_zip(argv[optind]);
+
+	if (directory) {
+		free(directory);
+	}
 
 	return res;
 }
