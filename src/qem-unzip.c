@@ -162,12 +162,12 @@ int main(int argc, char **argv)
 		directory = optarg;
 		break;
 	default:
-		fprintf(stderr, "Usage: sqlux-unzip [-d directory] zipfile\n");
+		fprintf(stderr, "Usage: qem-unzip [-d directory] zipfile\n");
 		return 1;
 	}
 
 	if (optind != (argc - 1)) {
-		printf("Usage: sqlux-unzip [-d directory] zipfile\n");
+		printf("Usage: qem-unzip [-d directory] zipfile\n");
 		return 1;
 	}
 
