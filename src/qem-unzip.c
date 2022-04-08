@@ -39,7 +39,62 @@ const q_emulator_hdr q_em_template = {
 	.f_datalen = 0,
 };
 
-int extract_zip(char *zipname)
+void escape_filename(char *fname)
+{
+	short l, i, j;
+	unsigned char c;
+	char s[255] = "-noASCII-                      ";
+	int last_ascii = 0;
+	char *hex_digit = "0123456789ABCDEF";
+	char *dotfind;
+
+	l = strlen(fname);
+
+	if (l > 31)
+		l = 31;
+
+	/* remove dots */
+	while ((dotfind = strchr(fname, '.'))) {
+		*dotfind = '_';
+	}
+
+	if (l == 0) {
+		strncpy(fname, "-noname-", 9);
+	} else { /* examine filename for non ascii characters */
+		for (i = 0; i < l; i++) {
+			c = fname[i];
+
+			if (c < 32 || c == ':') /* || c>127 */
+			{
+				j = 9;
+				for (i = 0; i < l; i++) {
+					c = fname[i];
+
+					if (c < 34 || c > 127 || c == ':') {
+						if (i > 0)
+							s[j++] = ' ';
+						if (c > 15)
+							s[j++] = hex_digit[(c >>
+									   4) &
+									  15];
+						s[j++] = hex_digit[c & 15];
+						last_ascii = 0;
+					} else {
+						if (!last_ascii) {
+							s[j++] = '!';
+							last_ascii = 1;
+						}
+						s[j++] = c;
+					}
+				}
+				strncpy(fname, s, j);
+				break;
+			}
+		}
+	}
+}
+
+int extract_zip(char *zipname, int escape)
 {
 	struct zip *zip;
 	struct zip_file *zipfile;
@@ -50,6 +105,7 @@ int extract_zip(char *zipname)
 	zip_qdos_file_hdr *zip_qdos_hdr;
 	const uint8_t *extra_hdr;
 	struct zip_stat zstat;
+	char escaped_name[255];
 
 	printf("Opening Zip %s\n", zipname);
 
@@ -66,6 +122,15 @@ int extract_zip(char *zipname)
 		entryname = zip_get_name(zip, i, 0);
 
 		printf("Entry: %s\n", entryname);
+
+		if (escape) {
+			strncpy(escaped_name, entryname, sizeof(escaped_name));
+			escape_filename(escaped_name);
+
+			printf("Escaped Entry: %s\n", escaped_name);
+
+			entryname = escaped_name;
+		}
 
 		if (entryname[strlen(entryname)] == '/') {
 			printf("Creating Directory %s\n", entryname);
@@ -152,15 +217,14 @@ int main(int argc, char **argv)
 	int c, res = 0;
 	char *directory = NULL, *file = NULL;
 	wordexp_t p;
+	int escape = 0;
 
-       int wordexp(const char *restrict s, wordexp_t *restrict p, int flags);
-       void wordfree(wordexp_t *p);
 	/* for portability check our packing is working */
 	assert(sizeof(q_emulator_hdr) == 44);
 	assert(sizeof(qdos_file_hdr) == 64);
 	assert(sizeof(zip_qdos_file_hdr) == 72);
 
-	while ((c = getopt (argc, argv, "d:")) != -1)
+	while ((c = getopt (argc, argv, "d:e")) != -1)
 	switch (c) {
 	case 'd':
 		wordexp(optarg, &p, 0);
@@ -173,13 +237,16 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		break;
+	case 'e':
+		escape = 1;
+		break;
 	default:
-		fprintf(stderr, "Usage: qem-unzip [-d directory] zipfile\n");
+		fprintf(stderr, "Usage: qem-unzip [-d directory] [-e] zipfile\n");
 		return 1;
 	}
 
 	if (optind != (argc - 1)) {
-		printf("Usage: qem-unzip [-d directory] zipfile\n");
+		printf("Usage: qem-unzip [-d directory] [-e] zipfile\n");
 		return 1;
 	}
 
@@ -202,7 +269,7 @@ int main(int argc, char **argv)
 		wordfree(&p);
 		return 1;
 	}
-	res = extract_zip(file);
+	res = extract_zip(file, escape);
 
 	if (file) {
 		free(file);
