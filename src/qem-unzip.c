@@ -50,48 +50,57 @@ void escape_filename(char *fname)
 
 	l = strlen(fname);
 
-	if (l > 31)
-		l = 31;
+	if (l > 36)
+		l = 36;
 
 	/* remove dots */
 	while ((dotfind = strchr(fname, '.'))) {
 		*dotfind = '_';
 	}
 
+	/* if there is no name */
 	if (l == 0) {
 		strncpy(fname, "-noname-", 9);
-	} else { /* examine filename for non ascii characters */
-		for (i = 0; i < l; i++) {
-			c = fname[i];
+		return;
+	}
 
-			if (c < 32 || c == ':') /* || c>127 */
-			{
-				j = 9;
-				for (i = 0; i < l; i++) {
-					c = fname[i];
+	/* Check for invalid char */
+	for (i = 0; i < l; i++) {
+		c = fname[i];
 
-					if (c < 34 || c > 127 || c == ':') {
-						if (i > 0)
-							s[j++] = ' ';
-						if (c > 15)
-							s[j++] = hex_digit[(c >>
-									   4) &
-									  15];
-						s[j++] = hex_digit[c & 15];
-						last_ascii = 0;
-					} else {
-						if (!last_ascii) {
-							s[j++] = '!';
-							last_ascii = 1;
-						}
-						s[j++] = c;
-					}
-				}
-				strncpy(fname, s, j);
-				break;
-			}
+		if ((c < 32) || (c == ':')) /* || c>127 */
+		{
+			break;
 		}
 	}
+
+	/* Everything is a valid char */
+	if (i == l) {
+		return;
+	}
+
+	/* if we get here, there is a incompatible char are we encode */
+	j = 9;
+	for (i = 0; i < l; i++) {
+		c = fname[i];
+
+		if (c < 34 || c > 127 || c == ':') {
+			if (i > 0)
+				s[j++] = ' ';
+			if (c > 0x0F)
+				s[j++] = hex_digit[(c >> 4) & 0x0F];
+			s[j++] = hex_digit[c & 0x0F];
+			last_ascii = 0;
+		} else {
+			if (!last_ascii) {
+				s[j++] = '!';
+				last_ascii = 1;
+			}
+			s[j++] = c;
+		}
+	}
+
+	strncpy(fname, s, j);
 }
 
 int extract_zip(char *zipname, int escape)
