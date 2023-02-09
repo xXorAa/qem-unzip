@@ -18,7 +18,7 @@ use clap::Parser;
 struct Args {
     /// directory to extract to
     #[arg(short = 'd')]
-    directory: String,
+    directory: Option<String>,
 
     /// escpae the filenames sQLux/Q-Emulator style
     #[arg(short = 'e')]
@@ -159,8 +159,13 @@ fn real_main() -> i32 {
     let file = fs::File::open(args.file).unwrap();
     let mut archive = zip::ZipArchive::new(file).unwrap();
 
-    if !args.directory.is_empty() {
-        let path = Path::new(&args.directory);
+    let dirname = match args.directory {
+        Some(ref x) => x,
+        None => ""
+    };
+
+    if !dirname.is_empty() {
+        let path = Path::new(dirname);
         fs::create_dir_all(&path).unwrap();
     }
 
@@ -194,9 +199,9 @@ fn real_main() -> i32 {
                 escape_filename(&mut name);
             }
 
-            if !args.directory.is_empty() {
+            if !dirname.is_empty() {
                 name.insert(0, '/');
-                name.insert_str(0, &args.directory);
+                name.insert_str(0, dirname);
             }
 
             println!("Extracting: {}", name);
